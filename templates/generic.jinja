@@ -1,0 +1,29 @@
+{#
+  Generic template for models without native tool calling support.
+  This template adds basic tool calling instructions.
+#}
+{% set system_prompt = "You are a helpful assistant with access to tools. When you need to use a tool, respond with a tool call in this exact format:
+<tool_call={\"name\": \"function_name\", \"arguments\": {\"arg\": \"value\"}}>
+Do not include any other text when making a tool call." %}
+{% if messages[0]['role'] == 'system' %}
+{% set system_prompt = messages[0]['content'] + '\n\n' + system_prompt %}
+{% endif %}
+<|system|>
+{{ system_prompt }}
+<|end|>
+{% for message in messages %}
+{% if message['role'] == 'user' %}
+<|user|>
+{{ message['content'] }}
+<|end|>
+{% elif message['role'] == 'assistant' %}
+<|assistant|}
+{{ message['content'] }}
+<|end|>
+{% elif message['role'] == 'tool' %}
+<|tool|>
+{{ message['content'] }}
+<|end|>
+{% endif %}
+{% endfor %}
+<|assistant|}

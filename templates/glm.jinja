@@ -1,0 +1,30 @@
+{#
+  GLM-4 template for tool calling.
+  Uses a format similar to ChatML with tool instructions.
+#}
+{% set loop_messages = messages %}
+
+{%- if tools %}
+{{- "[gMASK]<sop>" }}
+{{- "<|system|>\nYou are a helpful assistant with access to tools. When you need to use a tool, respond in this format:\n<tool_call={\"name\": \"function_name\", \"arguments\": {\"arg\": \"value\"}}>\n\nAvailable tools:\n" }}
+{%- for tool in tools %}
+{{- tool['function']['name'] }}: {{ tool['function']['description'] }}
+{{- "\n" }}
+{%- endfor %}
+{%- else %}
+{{- "[gMASK]<sop><|system|>\nYou are a helpful assistant." %}
+{%- endif %}
+
+{%- for message in loop_messages %}
+{%- if message['role'] == 'user' %}
+{{- "<|user|>\n" + message['content'] }}
+{%- elif message['role'] == 'assistant' %}
+{{- "<|assistant|}\n" + message['content'] }}
+{%- elif message['role'] == 'tool' %}
+{{- "<|observation|>\n" + message['content'] }}
+{%- endif %}
+{%- endfor %}
+
+{%- if add_generation_prompt %}
+{{- "<|assistant|}" }}
+{%- endif %}

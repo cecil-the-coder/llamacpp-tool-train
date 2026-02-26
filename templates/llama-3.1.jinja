@@ -1,0 +1,37 @@
+{#
+  Llama 3.1/3.2/3.3 native tool calling template.
+  These models support native function calling via special tokens.
+#}
+{% set loop_messages = messages %}
+{% set tools_str = "" %}
+{% if tools %}
+{% set tools_str = tools | tojson %}
+{% endif %}
+
+{{- bos_token }}
+{%- if tools %}
+{{- "<|start_header_id|>system<|end_header_id|>\n\n" }}
+{{- "Environment: ipython\nCutting Knowledge Date: December 2023\n\n" }}
+{{- "You have access to the following functions. To call a function, please respond with a JSON for a function call." }}
+{{- "Respond in the format {\"name\": function name, \"parameters\": dictionary of argument name and its value}." }}
+{{- "Do not use variables.\n\n" }}
+{%- for t in tools %}
+{{- t | tojson(indent=2) }}
+{{- "\n\n" }}
+{%- endfor %}
+{{- "<|eot_id|>" }}
+{%- endif %}
+
+{%- for message in loop_messages %}
+{%- if message['role'] == 'user' %}
+{{- "<|start_header_id|>user<|end_header_id|>\n\n" + message['content'] + "<|eot_id|>" }}
+{%- elif message['role'] == 'assistant' %}
+{{- "<|start_header_id|>assistant<|end_header_id|>\n\n" + message['content'] + "<|eot_id|>" }}
+{%- elif message['role'] == 'tool' %}
+{{- "<|start_header_id|>ipython<|end_header_id|>\n\n" + message['content'] + "<|eot_id|>" }}
+{%- endif %}
+{%- endfor %}
+
+{%- if add_generation_prompt %}
+{{- "<|start_header_id|>assistant<|end_header_id|>\n\n" }}
+{%- endif %}
