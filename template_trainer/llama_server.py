@@ -1,14 +1,15 @@
-"""Client for llama.cpp server."""
+"""Client for llama.cpp / LiteLLM server."""
 
 import httpx
 from typing import Optional
 
 
 class LlamaClient:
-    """Client for connecting to an existing llama.cpp server."""
+    """Client for connecting to an OpenAI-compatible server (llama.cpp or LiteLLM)."""
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, model: Optional[str] = None):
         self.base_url = base_url.rstrip("/")
+        self.model = model
 
     def health_check(self, timeout: float = 10.0) -> bool:
         """Verify connection to server."""
@@ -16,7 +17,12 @@ class LlamaClient:
             response = httpx.get(f"{self.base_url}/health", timeout=timeout)
             return response.status_code == 200
         except (httpx.ConnectError, httpx.ReadTimeout):
-            raise RuntimeError(f"Cannot connect to server at {self.base_url}")
+            # Try LiteLLM health endpoints
+            try:
+                response = httpx.get(f"{self.base_url}/health/liveliness", timeout=timeout)
+                return response.status_code == 200
+            except:
+                raise RuntimeError(f"Cannot connect to server at {self.base_url}")
 
     def chat(
         self,
@@ -32,6 +38,9 @@ class LlamaClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+
+        if self.model:
+            payload["model"] = self.model
 
         if tools:
             payload["tools"] = tools

@@ -118,14 +118,15 @@ def display_results(results: list[ToolCallResult], score):
 
 def main():
     parser = argparse.ArgumentParser(description="Test tool calling on llama.cpp server")
-    parser.add_argument("--url", required=True, help="URL of the llama.cpp server (e.g., http://glm-4-7-flash:8080)")
+    parser.add_argument("--url", required=True, help="URL of the server (e.g., http://litellm:4000)")
+    parser.add_argument("--model", help="Model name (required for LiteLLM, e.g., glm-4-7-flash)")
     parser.add_argument("--output-dir", default="/results", help="Directory to save results")
     parser.add_argument("--categories", help="Comma-separated test categories to run (basic,multi_tool,complex)")
 
     args = parser.parse_args()
 
     # Connect to server
-    client = LlamaClient(args.url)
+    client = LlamaClient(args.url, model=args.model)
 
     console.print(f"[cyan]Connecting to {args.url}...[/cyan]")
     if not client.health_check():
