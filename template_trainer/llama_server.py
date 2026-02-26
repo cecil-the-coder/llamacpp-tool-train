@@ -1,96 +1,22 @@
-"""Manage llama.cpp server for template testing."""
+"""Client for llama.cpp server."""
 
-import json
-import os
-import signal
-import subprocess
-import time
-from pathlib import Path
-from typing import Optional
 import httpx
+from typing import Optional
 
 
-class LlamaServer:
-    """Context manager for llama.cpp server."""
+class LlamaClient:
+    """Client for connecting to an existing llama.cpp server."""
 
-    def __init__(
-        self,
-        model_path: str,
-        template_path: Optional[str] = None,
-        port: int = 8080,
-        host: str = "127.0.0.1",
-        gpu_layers: int = 0,
-        ctx_size: int = 4096,
-        llamacpp_dir: str = "/app/llama.cpp"
-    ):
-        self.model_path = model_path
-        self.template_path = template_path
-        self.port = port
-        self.host = host
-        self.gpu_layers = gpu_layers
-        self.ctx_size = ctx_size
-        self.llamacpp_dir = llamacpp_dir
-        self.process: Optional[subprocess.Popen] = None
-        self.base_url = f"http://{host}:{port}"
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip("/")
 
-    def start(self, timeout: float = 60.0) -> bool:
-        """Start the llama.cpp server."""
-        cmd = [
-            f"{self.llamacpp_dir}/llama-server",
-            "--model", self.model_path,
-            "--port", str(self.port),
-            "--host", self.host,
-            "--ctx-size", str(self.ctx_size),
-            "--jinja",  # Enable Jinja for function calling
-        ]
-
-        if self.gpu_layers > 0:
-            cmd.extend(["--n-gpu-layers", str(self.gpu_layers)])
-
-        if self.template_path:
-            cmd.extend(["--chat-template-file", self.template_path])
-
-        self.process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=self.llamacpp_dir
-        )
-
-        # Wait for server to be ready
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                response = httpx.get(f"{self.base_url}/health", timeout=2.0)
-                if response.status_code == 200:
-                    return True
-            except (httpx.ConnectError, httpx.ReadTimeout):
-                pass
-            time.sleep(0.5)
-
-        # Timeout - check if process is still running
-        if self.process.poll() is not None:
-            stderr = self.process.stderr.read().decode() if self.process.stderr else ""
-            raise RuntimeError(f"Server failed to start: {stderr}")
-
-        raise RuntimeError(f"Server did not become ready within {timeout}s")
-
-    def stop(self):
-        """Stop the llama.cpp server."""
-        if self.process:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-            self.process = None
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
+    def health_check(self, timeout: float = 10.0) -> bool:
+        """Verify connection to server."""
+        try:
+            response = httpx.get(f"{self.base_url}/health", timeout=timeout)
+            return response.status_code == 200
+        except (httpx.ConnectError, httpx.ReadTimeout):
+            raise RuntimeError(f"Cannot connect to server at {self.base_url}")
 
     def chat(
         self,
