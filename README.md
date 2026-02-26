@@ -1,19 +1,18 @@
 # llamacpp-tool-train
 
-Test tool calling capabilities of llama.cpp models.
+Test tool calling capabilities of llama.cpp models via LiteLLM.
 
 ## Usage
 
 ```bash
-# Build
-docker build -t llamacpp-tool-train .
+# Port-forward to LiteLLM
+kubectl port-forward -n inference svc/litellm 4000:4000 &
 
-# Run against an existing llama.cpp server
-docker run --rm llamacpp-tool-train --url http://glm-4-7-flash:8080
+# Run tests
+python3 run.py --url http://localhost:4000 --model glm-4-7-flash
 
-# Kubernetes
-kubectl apply -f job.yaml
-kubectl logs -f job/test-tools-glm-4-7-flash
+# With verbose output
+python3 run.py --url http://localhost:4000 --model glm-4-7-flash -v
 ```
 
 ## Test Categories
@@ -26,14 +25,8 @@ kubectl logs -f job/test-tools-glm-4-7-flash
 | `context` | Context-aware tool calls |
 | `ambiguous` | Edge cases |
 
-## Architecture
+## Requirements
 
-```
-├── template_trainer/
-│   ├── llama_server.py   # Client for llama.cpp API
-│   ├── scorer.py         # Score tool call results
-│   └── synbad_compat.py  # Synbad-compatible test cases
-├── tests/
-│   └── test_tools.py     # Test cases for tool calling
-└── run.py                # Main entry point
+```bash
+pip install httpx rich
 ```
