@@ -23,7 +23,7 @@ from tests.test_tools import TEST_CASES, get_test_cases_by_category
 console = Console()
 
 
-def run_tests(client: LlamaClient, test_cases: list) -> list[ToolCallResult]:
+def run_tests(client: LlamaClient, test_cases: list, verbose: bool = False) -> list[ToolCallResult]:
     """Run all test cases against the server."""
     results = []
 
@@ -39,6 +39,10 @@ def run_tests(client: LlamaClient, test_cases: list) -> list[ToolCallResult]:
             # Extract the assistant's response
             message = response.get("choices", [{}])[0].get("message", {})
             content = message.get("content", "")
+
+            if verbose:
+                console.print(f"\n[dim]--- {tc.name} ---[/dim]")
+                console.print(f"[dim]Response: {json.dumps(message, indent=2)}[/dim]")
 
             # Check for tool_calls in response (native format)
             if "tool_calls" in message and message["tool_calls"]:
@@ -122,6 +126,7 @@ def main():
     parser.add_argument("--model", help="Model name (required for LiteLLM, e.g., glm-4-7-flash)")
     parser.add_argument("--output-dir", default="/results", help="Directory to save results")
     parser.add_argument("--categories", help="Comma-separated test categories to run (basic,multi_tool,complex)")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show raw output for each test")
 
     args = parser.parse_args()
 
@@ -146,7 +151,7 @@ def main():
     console.print(f"[cyan]Running {len(test_cases)} test cases[/cyan]\n")
 
     # Run tests
-    results = run_tests(client, test_cases)
+    results = run_tests(client, test_cases, verbose=args.verbose)
     score = score_template(results)
 
     # Display results
